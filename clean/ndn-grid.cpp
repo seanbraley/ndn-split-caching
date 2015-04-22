@@ -17,25 +17,30 @@
  * ndnSIM, e.g., in COPYING.md file.  If not, see <http://www.gnu.org/licenses/>.
  **/
 
-// ndn-simple.cpp
+// ndn-grid.cpp
 
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
 #include "ns3/point-to-point-module.h"
+#include "ns3/point-to-point-layout-module.h"
 #include "ns3/ndnSIM-module.h"
 
 namespace ns3 {
 
 /**
- * This scenario simulates a very simple network topology:
+ * This scenario simulates a grid topology (using PointToPointGrid module)
  *
+ * (consumer) -- ( ) ----- ( )
+ *     |          |         |
+ *    ( ) ------ ( ) ----- ( )
+ *     |          |         |
+ *    ( ) ------ ( ) -- (producer)
  *
- *      +----------+     1Mbps      +--------+     1Mbps      +----------+
- *      | consumer | <------------> | router | <------------> | producer |
- *      +----------+         10ms   +--------+          10ms  +----------+
+ * All links are 1Mbps with propagation 10ms delay.
  *
+ * FIB is populated using NdnGlobalRoutingHelper.
  *
- * Consumer requests data from producer with frequency 10 interests per second
+ * Consumer requests data from producer with frequency 100 interests per second
  * (interests contain constantly increasing sequence number).
  *
  * For every received interest, producer replies with a data packet, containing
@@ -43,64 +48,62 @@ namespace ns3 {
  *
  * To run scenario and see what is happening, use the following command:
  *
- *     NS_LOG=ndn.Consumer:ndn.Producer ./waf --run=ndn-simple
+ *     NS_LOG=ndn.Consumer:ndn.Producer ./waf --run=ndn-grid
  */
 
 int
 main(int argc, char* argv[])
 {
-  // setting default parameters for PointToPoint links and channels
+  // Setting default parameters for PointToPoint links and channels
   Config::SetDefault("ns3::PointToPointNetDevice::DataRate", StringValue("1Mbps"));
   Config::SetDefault("ns3::PointToPointChannel::Delay", StringValue("10ms"));
-  Config::SetDefault("ns3::DropTailQueue::MaxPackets", StringValue("20"));
+  Config::SetDefault("ns3::DropTailQueue::MaxPackets", StringValue("10"));
 
   // Read optional command-line parameters (e.g., enable visualizer with ./waf --run=<> --visualize
   CommandLine cmd;
   cmd.Parse(argc, argv);
 
-  // Creating nodes
-  NodeContainer nodes;
-  nodes.Create(3);
-
-  // Connecting nodes using two links
+  // Creating 3x3 topology
   PointToPointHelper p2p;
-  p2p.Install(nodes.Get(0), nodes.Get(1));
-  p2p.Install(nodes.Get(1), nodes.Get(2));
+  PointToPointGridHelper grid(3, 3, p2p);
+  grid.BoundingBox(100, 100, 200, 200);
 
   // Install NDN stack on all nodes
   ndn::StackHelper ndnHelper;
-  ndnHelper.SetDefaultRoutes(true);
-  //ndnHelper.InstallAll();
-  ndnHelper.setCsSize(1000);
-  ndnHelper.Install(nodes.Get(0));
-  ndnHelper.Install(nodes.Get(2));
-  ndnHelper.Install(nodes.Get(1));
+  ndnHelper.InstallAll();
 
-  // Choosing forwarding strategy
-  ndn::StrategyChoiceHelper::InstallAll("/prefix", "/localhost/nfd/strategy/broadcast");
+  // Set BestRoute strategy
+  ndn::StrategyChoiceHelper::InstallAll("/", "/localhost/nfd/strategy/best-route");
 
-  // Installing applications
+  // Installing global routing interface on all nodes
+  ndn::GlobalRoutingHelper ndnGlobalRoutingHelper;
+  ndnGlobalRoutingHelper.InstallAll();
 
-  // Consumer
-  // cout << "Starting Consumer";
-  //ndn::AppHelper consumerHelper("ns3::ndn::ConsumerCbr");
-  // Consumer will request /prefix/0, /prefix/1, ...
-  ndn::AppHelper consumerHelper("ns3::ndn::ConsumerZipfMandelbrot");
-  consumerHelper.SetPrefix("/prefix");
-  consumerHelper.SetAttribute("Frequency", StringValue("10")); // 10 interests a second
-  consumerHelper.Install(nodes.Get(0));                        // first node
+  // Getting containers for the consumer/producer
+  Ptr<Node> producer = grid.GetNode(2, 2);
+  NodeContainer consumerNodes;
+  consumerNodes.Add(grid.GetNode(0, 0));
 
-  // Producer
+  // Install NDN applications
+  std::string prefix = "/prefix";
+
+  ndn::AppHelper consumerHelper("ns3::ndn::ConsumerCbr");
+  consumerHelper.SetPrefix(prefix);
+  consumerHelper.SetAttribute("Frequency", StringValue("100")); // 100 interests a second
+  consumerHelper.Install(consumerNodes);
+
   ndn::AppHelper producerHelper("ns3::ndn::Producer");
-  // Producer will reply to all requests starting with /prefix
-  producerHelper.SetPrefix("/prefix");
+  producerHelper.SetPrefix(prefix);
   producerHelper.SetAttribute("PayloadSize", StringValue("1024"));
-  producerHelper.Install(nodes.Get(2)); // last node
+  producerHelper.Install(producer);
 
-  Simulator::Stop(Seconds(5.0));
+  // Add /prefix origins to ndn::GlobalRouter
+  ndnGlobalRoutingHelper.AddOrigins(prefix, producer);
 
-  // CS Trace
-  ndn::CsTracer::InstallAll("cs-trace.txt", Seconds(1));
+  // Calculate and install FIBs
+  ndn::GlobalRoutingHelper::CalculateRoutes();
+
+  Simulator::Stop(Seconds(20.0));
 
   Simulator::Run();
   Simulator::Destroy();

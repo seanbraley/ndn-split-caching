@@ -17,7 +17,7 @@
  * ndnSIM, e.g., in COPYING.md file.  If not, see <http://www.gnu.org/licenses/>.
  **/
 
-// ndn-simple.cpp
+// ndn-simple-with-different-sizes-content-store.cc
 
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
@@ -34,16 +34,13 @@ namespace ns3 {
  *      | consumer | <------------> | router | <------------> | producer |
  *      +----------+         10ms   +--------+          10ms  +----------+
  *
+ * This scenario demonstrates how to use content store that responds to Freshness parameter set in
+ *Datas.
+ * That is, if producer set Freshness field to 2 seconds, the corresponding content object will not
+ *be cached
+ * more than 2 seconds (can be cached for a shorter time, if entry is evicted earlier)
  *
- * Consumer requests data from producer with frequency 10 interests per second
- * (interests contain constantly increasing sequence number).
- *
- * For every received interest, producer replies with a data packet, containing
- * 1024 bytes of virtual payload.
- *
- * To run scenario and see what is happening, use the following command:
- *
- *     NS_LOG=ndn.Consumer:ndn.Producer ./waf --run=ndn-simple
+ *     NS_LOG=ndn.Consumer ./waf --run ndn-simple-with-different-sizes-content-store
  */
 
 int
@@ -70,22 +67,22 @@ main(int argc, char* argv[])
   // Install NDN stack on all nodes
   ndn::StackHelper ndnHelper;
   ndnHelper.SetDefaultRoutes(true);
-  //ndnHelper.InstallAll();
-  ndnHelper.setCsSize(1000);
-  ndnHelper.Install(nodes.Get(0));
-  ndnHelper.Install(nodes.Get(2));
-  ndnHelper.Install(nodes.Get(1));
+  ndnHelper.SetOldContentStore(
+    "ns3::ndn::cs::Freshness::Lru"); // don't set up max size here, will use default value = 100
+  ndnHelper.InstallAll();
 
-  // Choosing forwarding strategy
-  ndn::StrategyChoiceHelper::InstallAll("/prefix", "/localhost/nfd/strategy/broadcast");
+  // set up max sizes, after NDN stack is installed
+  Config::Set("/NodeList/0/$ns3::ndn::ContentStore/MaxSize",
+              UintegerValue(
+                1)); // number after nodeList is global ID of the node (= node->GetId ())
+  Config::Set("/NodeList/1/$ns3::ndn::ContentStore/MaxSize", UintegerValue(2));
+  Config::Set("/NodeList/2/$ns3::ndn::ContentStore/MaxSize", UintegerValue(200));
 
   // Installing applications
 
   // Consumer
-  // cout << "Starting Consumer";
-  //ndn::AppHelper consumerHelper("ns3::ndn::ConsumerCbr");
+  ndn::AppHelper consumerHelper("ns3::ndn::ConsumerCbr");
   // Consumer will request /prefix/0, /prefix/1, ...
-  ndn::AppHelper consumerHelper("ns3::ndn::ConsumerZipfMandelbrot");
   consumerHelper.SetPrefix("/prefix");
   consumerHelper.SetAttribute("Frequency", StringValue("10")); // 10 interests a second
   consumerHelper.Install(nodes.Get(0));                        // first node
@@ -97,10 +94,7 @@ main(int argc, char* argv[])
   producerHelper.SetAttribute("PayloadSize", StringValue("1024"));
   producerHelper.Install(nodes.Get(2)); // last node
 
-  Simulator::Stop(Seconds(5.0));
-
-  // CS Trace
-  ndn::CsTracer::InstallAll("cs-trace.txt", Seconds(1));
+  Simulator::Stop(Seconds(20.0));
 
   Simulator::Run();
   Simulator::Destroy();

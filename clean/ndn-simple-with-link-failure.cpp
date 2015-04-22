@@ -17,12 +17,15 @@
  * ndnSIM, e.g., in COPYING.md file.  If not, see <http://www.gnu.org/licenses/>.
  **/
 
-// ndn-simple.cpp
+// ndn-simple-with-link-failure.cpp
 
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
 #include "ns3/point-to-point-module.h"
 #include "ns3/ndnSIM-module.h"
+
+// for LinkStatusControl::FailLinks and LinkStatusControl::UpLinks
+#include "ns3/ndnSIM/helper/ndn-link-control-helper.hpp"
 
 namespace ns3 {
 
@@ -43,7 +46,7 @@ namespace ns3 {
  *
  * To run scenario and see what is happening, use the following command:
  *
- *     NS_LOG=ndn.Consumer:ndn.Producer ./waf --run=ndn-simple
+ *     NS_LOG=ndn.Consumer:ndn.Producer ./waf --run=ndn-simple-with-link-failure
  */
 
 int
@@ -70,22 +73,13 @@ main(int argc, char* argv[])
   // Install NDN stack on all nodes
   ndn::StackHelper ndnHelper;
   ndnHelper.SetDefaultRoutes(true);
-  //ndnHelper.InstallAll();
-  ndnHelper.setCsSize(1000);
-  ndnHelper.Install(nodes.Get(0));
-  ndnHelper.Install(nodes.Get(2));
-  ndnHelper.Install(nodes.Get(1));
-
-  // Choosing forwarding strategy
-  ndn::StrategyChoiceHelper::InstallAll("/prefix", "/localhost/nfd/strategy/broadcast");
+  ndnHelper.InstallAll();
 
   // Installing applications
 
   // Consumer
-  // cout << "Starting Consumer";
-  //ndn::AppHelper consumerHelper("ns3::ndn::ConsumerCbr");
+  ndn::AppHelper consumerHelper("ns3::ndn::ConsumerCbr");
   // Consumer will request /prefix/0, /prefix/1, ...
-  ndn::AppHelper consumerHelper("ns3::ndn::ConsumerZipfMandelbrot");
   consumerHelper.SetPrefix("/prefix");
   consumerHelper.SetAttribute("Frequency", StringValue("10")); // 10 interests a second
   consumerHelper.Install(nodes.Get(0));                        // first node
@@ -97,10 +91,11 @@ main(int argc, char* argv[])
   producerHelper.SetAttribute("PayloadSize", StringValue("1024"));
   producerHelper.Install(nodes.Get(2)); // last node
 
-  Simulator::Stop(Seconds(5.0));
+  // The failure of the link connecting consumer and router will start from seconds 10.0 to 15.0
+  Simulator::Schedule(Seconds(10.0), ndn::LinkControlHelper::FailLink, nodes.Get(0), nodes.Get(1));
+  Simulator::Schedule(Seconds(15.0), ndn::LinkControlHelper::UpLink, nodes.Get(0), nodes.Get(1));
 
-  // CS Trace
-  ndn::CsTracer::InstallAll("cs-trace.txt", Seconds(1));
+  Simulator::Stop(Seconds(20.0));
 
   Simulator::Run();
   Simulator::Destroy();

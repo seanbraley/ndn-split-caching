@@ -17,34 +17,49 @@
  * ndnSIM, e.g., in COPYING.md file.  If not, see <http://www.gnu.org/licenses/>.
  **/
 
-// ndn-simple.cpp
+// ndn-simple-with-pcap.cpp
 
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
 #include "ns3/point-to-point-module.h"
 #include "ns3/ndnSIM-module.h"
 
+/**
+ * This scenario demonstrates how to dump raw NDN packets into tcpdump-format
+ *
+ * Run scenario:
+ *
+ *     ./waf --run ndn-simple-with-pcap
+ *
+ * After simulation finishes, it produces `ndn-simple-trace.pcap` that can be read
+ * using tcpdump or ndndump tools:
+ *
+ *    ndndump -r ndn-simple-trace.pcap not ip
+ *    tcpdump -r ndn-simple-trace.pcap
+ */
+
 namespace ns3 {
 
-/**
- * This scenario simulates a very simple network topology:
- *
- *
- *      +----------+     1Mbps      +--------+     1Mbps      +----------+
- *      | consumer | <------------> | router | <------------> | producer |
- *      +----------+         10ms   +--------+          10ms  +----------+
- *
- *
- * Consumer requests data from producer with frequency 10 interests per second
- * (interests contain constantly increasing sequence number).
- *
- * For every received interest, producer replies with a data packet, containing
- * 1024 bytes of virtual payload.
- *
- * To run scenario and see what is happening, use the following command:
- *
- *     NS_LOG=ndn.Consumer:ndn.Producer ./waf --run=ndn-simple
- */
+class PcapWriter {
+public:
+  PcapWriter(const std::string& file)
+  {
+    PcapHelper helper;
+    m_pcap = helper.CreateFile(file, std::ios::out, PcapHelper::DLT_PPP);
+  }
+
+  void
+  TracePacket(Ptr<const Packet> packet)
+  {
+    static PppHeader pppHeader;
+    pppHeader.SetProtocol(0x0077);
+
+    m_pcap->Write(Simulator::Now(), pppHeader, packet);
+  }
+
+private:
+  Ptr<PcapFileWrapper> m_pcap;
+};
 
 int
 main(int argc, char* argv[])
@@ -70,22 +85,13 @@ main(int argc, char* argv[])
   // Install NDN stack on all nodes
   ndn::StackHelper ndnHelper;
   ndnHelper.SetDefaultRoutes(true);
-  //ndnHelper.InstallAll();
-  ndnHelper.setCsSize(1000);
-  ndnHelper.Install(nodes.Get(0));
-  ndnHelper.Install(nodes.Get(2));
-  ndnHelper.Install(nodes.Get(1));
-
-  // Choosing forwarding strategy
-  ndn::StrategyChoiceHelper::InstallAll("/prefix", "/localhost/nfd/strategy/broadcast");
+  ndnHelper.InstallAll();
 
   // Installing applications
 
   // Consumer
-  // cout << "Starting Consumer";
-  //ndn::AppHelper consumerHelper("ns3::ndn::ConsumerCbr");
+  ndn::AppHelper consumerHelper("ns3::ndn::ConsumerCbr");
   // Consumer will request /prefix/0, /prefix/1, ...
-  ndn::AppHelper consumerHelper("ns3::ndn::ConsumerZipfMandelbrot");
   consumerHelper.SetPrefix("/prefix");
   consumerHelper.SetAttribute("Frequency", StringValue("10")); // 10 interests a second
   consumerHelper.Install(nodes.Get(0));                        // first node
@@ -95,12 +101,15 @@ main(int argc, char* argv[])
   // Producer will reply to all requests starting with /prefix
   producerHelper.SetPrefix("/prefix");
   producerHelper.SetAttribute("PayloadSize", StringValue("1024"));
+  producerHelper.SetAttribute("Signature", UintegerValue(100));
+  producerHelper.SetAttribute("KeyLocator", StringValue("/unique/key/locator"));
   producerHelper.Install(nodes.Get(2)); // last node
 
-  Simulator::Stop(Seconds(5.0));
+  PcapWriter trace("ndn-simple-trace.pcap");
+  Config::ConnectWithoutContext("/NodeList/*/DeviceList/*/$ns3::PointToPointNetDevice/MacTx",
+                                MakeCallback(&PcapWriter::TracePacket, &trace));
 
-  // CS Trace
-  ndn::CsTracer::InstallAll("cs-trace.txt", Seconds(1));
+  Simulator::Stop(Seconds(20.0));
 
   Simulator::Run();
   Simulator::Destroy();

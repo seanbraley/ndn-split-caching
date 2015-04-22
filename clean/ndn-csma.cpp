@@ -17,11 +17,11 @@
  * ndnSIM, e.g., in COPYING.md file.  If not, see <http://www.gnu.org/licenses/>.
  **/
 
-// ndn-simple.cpp
+// ndn-csma.cpp
 
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
-#include "ns3/point-to-point-module.h"
+#include "ns3/csma-module.h"
 #include "ns3/ndnSIM-module.h"
 
 namespace ns3 {
@@ -29,10 +29,13 @@ namespace ns3 {
 /**
  * This scenario simulates a very simple network topology:
  *
+ *                            CSMA bus (1Mbps, 10ms)
+ *           +--------------------------+--------------------------+
+ *           |                          |                          |
  *
- *      +----------+     1Mbps      +--------+     1Mbps      +----------+
- *      | consumer | <------------> | router | <------------> | producer |
- *      +----------+         10ms   +--------+          10ms  +----------+
+ *      +----------+                +--------+                +----------+
+ *      | consumer |                | router |                | producer |
+ *      +----------+                +--------+                +----------+
  *
  *
  * Consumer requests data from producer with frequency 10 interests per second
@@ -43,15 +46,15 @@ namespace ns3 {
  *
  * To run scenario and see what is happening, use the following command:
  *
- *     NS_LOG=ndn.Consumer:ndn.Producer ./waf --run=ndn-simple
+ *     NS_LOG=ndn.Consumer:ndn.Producer ./waf --run=ndn-csma
  */
 
 int
 main(int argc, char* argv[])
 {
   // setting default parameters for PointToPoint links and channels
-  Config::SetDefault("ns3::PointToPointNetDevice::DataRate", StringValue("1Mbps"));
-  Config::SetDefault("ns3::PointToPointChannel::Delay", StringValue("10ms"));
+  Config::SetDefault("ns3::CsmaChannel::DataRate", StringValue("1Mbps"));
+  Config::SetDefault("ns3::CsmaChannel::Delay", StringValue("10ms"));
   Config::SetDefault("ns3::DropTailQueue::MaxPackets", StringValue("20"));
 
   // Read optional command-line parameters (e.g., enable visualizer with ./waf --run=<> --visualize
@@ -63,29 +66,19 @@ main(int argc, char* argv[])
   nodes.Create(3);
 
   // Connecting nodes using two links
-  PointToPointHelper p2p;
-  p2p.Install(nodes.Get(0), nodes.Get(1));
-  p2p.Install(nodes.Get(1), nodes.Get(2));
+  CsmaHelper csma;
+  csma.Install(nodes);
 
   // Install NDN stack on all nodes
   ndn::StackHelper ndnHelper;
   ndnHelper.SetDefaultRoutes(true);
-  //ndnHelper.InstallAll();
-  ndnHelper.setCsSize(1000);
-  ndnHelper.Install(nodes.Get(0));
-  ndnHelper.Install(nodes.Get(2));
-  ndnHelper.Install(nodes.Get(1));
-
-  // Choosing forwarding strategy
-  ndn::StrategyChoiceHelper::InstallAll("/prefix", "/localhost/nfd/strategy/broadcast");
+  ndnHelper.InstallAll();
 
   // Installing applications
 
   // Consumer
-  // cout << "Starting Consumer";
-  //ndn::AppHelper consumerHelper("ns3::ndn::ConsumerCbr");
+  ndn::AppHelper consumerHelper("ns3::ndn::ConsumerCbr");
   // Consumer will request /prefix/0, /prefix/1, ...
-  ndn::AppHelper consumerHelper("ns3::ndn::ConsumerZipfMandelbrot");
   consumerHelper.SetPrefix("/prefix");
   consumerHelper.SetAttribute("Frequency", StringValue("10")); // 10 interests a second
   consumerHelper.Install(nodes.Get(0));                        // first node
@@ -97,10 +90,7 @@ main(int argc, char* argv[])
   producerHelper.SetAttribute("PayloadSize", StringValue("1024"));
   producerHelper.Install(nodes.Get(2)); // last node
 
-  Simulator::Stop(Seconds(5.0));
-
-  // CS Trace
-  ndn::CsTracer::InstallAll("cs-trace.txt", Seconds(1));
+  Simulator::Stop(Seconds(20.0));
 
   Simulator::Run();
   Simulator::Destroy();
