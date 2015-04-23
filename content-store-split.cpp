@@ -67,36 +67,15 @@ Splitcache::GetTypeId(void)
 			MakeStringAccessor(&Splitcache::Configure),
 			MakeStringChecker()
 		)
+		.AddTraceSource("CacheNormalHits", "Trace called every time there is a normal cache hit",
+			MakeTraceSourceAccessor(&Splitcache::m_cacheNormalHitsTrace))
+		.AddTraceSource("CacheSpecialHits", "Trace called every time there is a special cache hit",
+			MakeTraceSourceAccessor(&Splitcache::m_cacheSpecialHitsTrace))
+		.AddTraceSource("CacheNormalMisses", "Trace called every time there is a normal cache miss",
+			MakeTraceSourceAccessor(&Splitcache::m_cacheNormalMissesTrace))
+		.AddTraceSource("CacheSpecialMisses", "Trace called every time there is a special cache miss",
+			MakeTraceSourceAccessor(&Splitcache::m_cacheSpecialMissesTrace))
 		;
-						/*
-						.AddAttribute("SNormal",
-									  "Sets the cache size for the normal cache",
-									  StringValue("100"),
-									  // This might break
-									  MakeStringAccessor(&Splitcache::m_normal_size),
-									  MakeStringChecker()
-									  )
-						.AddAttribute("SSpecial",
-									  "Sets the cache size for the special cache",
-									  StringValue("100"),
-									  // This might break
-									  MakeStringAccessor(&Splitcache::m_special_size),
-									  MakeStringChecker()
-									  )
-						.AddAttribute("PNormal",
-									  "Sets the cache Policy for the normal cache",
-									  StringValue("ns3::ndn::cs::Lru"),
-									  // This might break
-									  MakeStringAccessor(&Splitcache::m_normal_policy),
-									  MakeStringChecker()
-									  )
-						.AddAttribute("PSpecial",
-									  "Sets the cache Policy for the special cache",
-									  StringValue("ns3::ndn::cs::Lru"),
-									  // This might break
-									  MakeStringAccessor(&Splitcache::m_special_policy),
-									  MakeStringChecker()
-									  */
 
   return tid;
 }
@@ -158,19 +137,39 @@ Splitcache::Lookup(shared_ptr<const Interest> interest)
 	// If special data
 	//NS_LOG_DEBUG("Interest In Data");
 	//NS_LOG_DEBUG(interest->getName());
-	if( interest->getName().toUri().find("special") < 10 )
+	shared_ptr<Data> myData = 0;
+	if (interest->getName().toUri().find("special") < 10)
 	{
-		//NS_LOG_DEBUG("SPECIAL DATA");
-
-		return m_special->Lookup(interest);
-		//this->m_cacheMissesTrace(interest);
+		// Get data from lookup
+		myData = m_special->Lookup(interest);
+		if (myData)
+		{
+			this->m_cacheHitsTrace(interest, myData);
+			this->m_cacheSpecialHitsTrace(interest, myData);
+		}
+		else
+		{
+			this->m_cacheMissesTrace(interest);
+			this->m_cacheSpecialMissesTrace(interest);
+		}
+		return myData;
 	}
 	// If normal data
 	else 
 	{
-		//NS_LOG_DEBUG("NORMAL DATA");
-		return m_normal->Lookup(interest);
-		//this->m_cacheHitsTrace(interest);
+
+		myData = m_normal->Lookup(interest);
+		if (myData)
+		{
+			this->m_cacheHitsTrace(interest, myData);
+			this->m_cacheNormalHitsTrace(interest, myData);
+		}
+		else
+		{
+			this->m_cacheMissesTrace(interest);
+			this->m_cacheNormalMissesTrace(interest);
+		}
+		return myData;
 	}
 }
 

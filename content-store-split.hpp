@@ -100,6 +100,16 @@ public:
   SetMaxSize(uint32_t maxSize);
 
   virtual Ptr<cs::Entry> Next(Ptr<cs::Entry>);
+
+protected:
+	TracedCallback<shared_ptr<const Interest>,
+		shared_ptr<const Data >> m_cacheNormalHitsTrace; ///< @brief trace of Normal cache hits
+	TracedCallback<shared_ptr<const Interest>,
+		shared_ptr<const Data >> m_cacheSpecialHitsTrace; ///< @brief trace of Special cache hits
+
+	TracedCallback<shared_ptr<const Interest>> m_cacheNormalMissesTrace; ///< @brief trace of cache misses
+	TracedCallback<shared_ptr<const Interest>> m_cacheSpecialMissesTrace; ///< @brief trace of cache misses
+
 };
 
 } // namespace cs

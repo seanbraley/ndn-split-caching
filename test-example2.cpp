@@ -152,6 +152,9 @@ main(int argc, char* argv[])
   producerHelper.SetAttribute("Freshness", TimeValue(Seconds(-1.0))); // unlimited freshness
   producerHelper.Install(nodes.Get(2)); // last node
 
+  ndn::AppDelayTracer::InstallAll("app-delays-trace.txt");
+  ndn::CsTracer::InstallAll("cs-trace.txt", Seconds(1));
+
   Simulator::Stop(Seconds(20.0));
 
   Simulator::Run();
