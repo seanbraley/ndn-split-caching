@@ -71,9 +71,17 @@ main(int argc, char* argv[])
   ndn::StackHelper ndnHelper;
   //ndnHelper.SetOldContentStore("ns3::ndn::cs::Lru", "MaxSize",
   //                             "100"); // default ContentStore parameters
-  //ndnHelper.SetOldContentStore("ns3::ndn::cs::Splitcache", "SizeOfNormal", "1000", "SizeOfSpecial", "1000", "PolicyOfNormal", 
- //	  "ns3::ndn::cs::Lru", "PolicyOfSpecial", "ns3::ndn::cs::Lru");
+  /*
+    ndnHelper.SetOldContentStore("ns3::ndn::cs::Splitcache", 
+	  StringValue("SizeOfNormal"), StringValue("1000"),
+	  StringValue("SizeOfSpecial"), StringValue("1000"),
+	  StringValue("PolicyOfNormal"), StringValue("ns3::ndn::cs::Lru"),
+	  StringValue("PolicyOfSpecial"), StringValue("ns3::ndn::cs::Lru")
+  );
+  */
   ndnHelper.SetOldContentStore("ns3::ndn::cs::Splitcache");
+//	  "SNormal", "150", "SSpecial", "150", "PNormal", "ns3::ndn::cs::Lru", "PSpecial", "ns3::ndn::cs::Lru");
+  //ndnHelper.SetOldContentStore("ns3::ndn::cs::Splitcache");
   ndnHelper.InstallAll();
 
   // Choosing forwarding strategy

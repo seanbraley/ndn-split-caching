@@ -23,6 +23,7 @@
 #include "ns3/ndnSIM/model/ndn-common.hpp"
 
 #include "ns3/ndnSIM/model/cs/ndn-content-store.hpp"
+//#include "ns3/ndnSIM/model/cs/content-store-impl.hpp"
 
 namespace ns3 {
 namespace ndn {
@@ -34,10 +35,10 @@ namespace cs {
  */
 class Splitcache : public ContentStore {
 public:
-	std::uint32_t m_normal_size;
+	std::string m_normal_size;
 	std::string m_normal_policy;
 	
-	std::uint32_t m_special_size;
+	std::string m_special_size;
 	std::string m_special_policy;
 
 	int incr;
@@ -79,6 +80,12 @@ public:
 
   virtual Ptr<cs::Entry>
   End();
+
+  virtual uint32_t
+  GetMaxSize() const;
+
+  virtual void
+  SetMaxSize(uint32_t maxSize);
 
   virtual Ptr<cs::Entry> Next(Ptr<cs::Entry>);
 };

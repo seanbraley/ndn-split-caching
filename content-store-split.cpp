@@ -40,38 +40,46 @@ Splitcache::GetTypeId(void)
   static TypeId tid = TypeId("ns3::ndn::cs::Splitcache")
                         .SetGroupName("Ndn")
                         .SetParent<ContentStore>()
-                        .AddConstructor<Splitcache>()
-						.AddAttribute("SizeOfNormal",
+						.AddConstructor<Splitcache>();
+						/*
+						.AddAttribute("SNormal",
 									  "Sets the cache size for the normal cache",
-									  StringValue("d"),
+									  StringValue("100"),
 									  // This might break
-									  MakeUintegerAccessor(&Splitcache::m_normal_size),
-									  MakeUintegerChecker<std::uint32_t> ()
+									  MakeStringAccessor(&Splitcache::m_normal_size),
+									  MakeStringChecker()
 									  )
-						.AddAttribute("SizeOfSpecial",
+						.AddAttribute("SSpecial",
 									  "Sets the cache size for the special cache",
 									  StringValue("100"),
 									  // This might break
-									  MakeUintegerAccessor(&Splitcache::m_special_size),
-									  MakeUintegerChecker<std::uint32_t>()
+									  MakeStringAccessor(&Splitcache::m_special_size),
+									  MakeStringChecker()
 									  )
-						.AddAttribute("PolicyOfNormal",
+						.AddAttribute("PNormal",
 									  "Sets the cache Policy for the normal cache",
 									  StringValue("ns3::ndn::cs::Lru"),
 									  // This might break
 									  MakeStringAccessor(&Splitcache::m_normal_policy),
 									  MakeStringChecker()
 									  )
-						.AddAttribute("PolicyOfSpecial",
+						.AddAttribute("PSpecial",
 									  "Sets the cache Policy for the special cache",
 									  StringValue("ns3::ndn::cs::Lru"),
 									  // This might break
 									  MakeStringAccessor(&Splitcache::m_special_policy),
 									  MakeStringChecker()
-									  );
+									  */
 
   return tid;
 }
+// Things to do with Hesham tomorrow
+// TODO: Set up traces
+// TODO: Try and set up attributes
+// TODO: How to access policy things such as Set/Get MaxSize from HERE
+//			This would involve some access to the underlying object
+
+
 /*
  * @brief Creates an object factory which makes its two sub-caches
  * 
@@ -82,17 +90,30 @@ Splitcache::Splitcache()
 	ObjectFactory m_contentStoreFactory;
 
 	// Set type and create 
-	std::cout << "Debugline" << std::endl;
-	std::cout << m_normal_policy << std::endl;
-	std::cout << m_normal_size << std::endl;
-	m_contentStoreFactory.SetTypeId(m_normal_policy);
-	m_contentStoreFactory.Set("MaxSize", StringValue(std::to_string(m_normal_size)));
+	//std::cout << "Debugline" << std::endl;
+	//std::cout << m_normal_policy << std::endl;
+	//std::cout << m_normal_size << std::endl;
+
+	/*
+	m_contentStoreFactory.SetTypeId((m_normal_policy));
+	m_contentStoreFactory.Set("MaxSize", StringValue(m_normal_size));
 	m_normal = m_contentStoreFactory.Create<ContentStore>();
 	
-	m_contentStoreFactory.SetTypeId(m_special_policy);
-	m_contentStoreFactory.Set("MaxSize", StringValue(std::to_string(m_special_size)));
+	m_contentStoreFactory.SetTypeId((m_special_policy));
+	m_contentStoreFactory.Set("MaxSize", StringValue(m_special_size));
 	m_special = m_contentStoreFactory.Create<ContentStore>();
+	*/
 	
+	m_contentStoreFactory.SetTypeId("ns3::ndn::cs::Lru");
+	m_contentStoreFactory.Set("MaxSize", StringValue("15"));
+	m_normal = m_contentStoreFactory.Create<ContentStore>();
+
+	m_contentStoreFactory.SetTypeId("ns3::ndn::cs::Lru");
+	m_contentStoreFactory.Set("MaxSize", StringValue("15"));
+	m_special = m_contentStoreFactory.Create<ContentStore>();
+
+
+
 	incr = 0;
 }
 
@@ -105,19 +126,23 @@ Splitcache::Lookup(shared_ptr<const Interest> interest)
 {
 	// normal
 
-	this->m_cacheMissesTrace(interest);
-	// If normal data
-	if (incr % 2 == 0)
-	{
-		return m_normal->Lookup(interest);
-	}
 	// If special data
+	//NS_LOG_DEBUG("Interest In Data");
+	//NS_LOG_DEBUG(interest->getName());
+	if( interest->getName().toUri().find("special") < 10 )
+	{
+		//NS_LOG_DEBUG("SPECIAL DATA");
+
+		return m_special->Lookup(interest);
+		//this->m_cacheMissesTrace(interest);
+	}
+	// If normal data
 	else 
 	{
-		return m_special->Lookup(interest);
+		//NS_LOG_DEBUG("NORMAL DATA");
+		return m_normal->Lookup(interest);
+		//this->m_cacheHitsTrace(interest);
 	}
-	incr++;
-  return 0;
 }
 
 bool
@@ -125,18 +150,49 @@ Splitcache::Add(shared_ptr<const Data> data)
 {
 	// if special data
 
-
-	// If normal data
-	if (incr % 2 == 0)
-	{
-		return m_normal->Add(data);
-	}
 	// If special data
-	else
+	NS_LOG_DEBUG("Data Add Request");
+	NS_LOG_DEBUG(data->getName());
+
+	NS_LOG_DEBUG("=== MAX CACHE SIZE " << m_special->GetMaxSize());
+	NS_LOG_DEBUG("=== MAX CACHE SIZE " << m_normal->GetMaxSize());
+
+	if (m_special->GetSize() >= 10)
 	{
+		NS_LOG_DEBUG("============ MAKING INTO LOOP");
+		m_special->SetMaxSize(6);
+	}
+
+	NS_LOG_DEBUG("=== MAX CACHE SIZE SPECIAL" << m_special->GetMaxSize());
+	NS_LOG_DEBUG("=== MAX CACHE CURRENT MEMBERS " << m_special->GetSize());
+
+
+	/*
+	m_normal->SetMaxSize(200);
+	NS_LOG_DEBUG("=== MAX CACHE SIZE " << m_normal->GetMaxSize());
+	m_normal->SetMaxSize(150);
+	NS_LOG_DEBUG("=== MAX CACHE SIZE " << m_normal->GetMaxSize());
+	*/
+
+	if (data->getName().toUri().find("special") < 10)
+	{
+
+		// Can we add? Is the special cache full? do we expand?
+
+		// This gives the number of entries in the store
+		NS_LOG_DEBUG("Special: " << m_special->GetSize() << " Normal " << m_normal->GetSize());
+
+		//NS_LOG_DEBUG(m_special->MaxSize());
+
 		return m_special->Add(data);
 	}
-	incr++;
+	// If normal data
+	else
+	{
+		NS_LOG_DEBUG("Data for Normal Cache");
+		NS_LOG_DEBUG("Special: " << m_special->GetSize() << " Normal " << m_normal->GetSize());
+		return m_normal->Add(data);
+	}
   return false;
 }
 
@@ -145,17 +201,25 @@ Splitcache::Print(std::ostream& os) const
 {
 }
 
+// Our shiny new functions
+
+
+
+
+
 uint32_t
 Splitcache::GetSize() const
 {
-	m_normal->GetSize();
-	return m_special->GetSize();
-  return 0;
+	NS_LOG_DEBUG("GetSize");
+
+	return m_normal->GetSize() + m_special->GetSize();
 }
 
 Ptr<cs::Entry>
 Splitcache::Begin()
 {
+	NS_LOG_DEBUG("Begin");
+
 		m_normal->Begin();
 		return m_special->Begin();
   return 0;
@@ -164,22 +228,28 @@ Splitcache::Begin()
 Ptr<cs::Entry>
 Splitcache::End()
 {
+	NS_LOG_DEBUG("END");
+
 	m_normal->End();
 	return m_special->End();
   return 0;
 }
 
+uint32_t
+Splitcache::GetMaxSize() const
+{
+	return 0;
+}
+
+void
+Splitcache::SetMaxSize(uint32_t maxsize)
+{
+}
+
 Ptr<cs::Entry> Splitcache::Next(Ptr<cs::Entry> a)
 {	
-	if (incr % 2 == 0)
-	{
-		return m_normal->Next(a);
-	}
-	else
-	{
-		return m_special->Next(a);
-	}
-	incr++;
+	NS_LOG_DEBUG("Next");
+
   return 0;
 }
 
