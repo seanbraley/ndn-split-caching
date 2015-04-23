@@ -35,10 +35,9 @@ namespace cs {
  */
 class Splitcache : public ContentStore {
 public:
-	std::string m_string_parameter;
 
+	std::string m_string_parameter;
 	std::string m_normal_policy;
-	
 	std::string m_special_policy;
 
 	int incr;
@@ -49,6 +48,7 @@ public:
 
 	Ptr<ContentStore> m_normal;
 	Ptr<ContentStore> m_special;
+
   /**
    * \brief Interface ID
    *

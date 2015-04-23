@@ -56,7 +56,7 @@ Splitcache::GetTypeId(void)
 			MakeStringChecker()
 		)
 		.AddAttribute("TotalCacheSize",
-			"URI for the Special policy",
+			"Value for the total cache size",
 			UintegerValue(100),
 			MakeUintegerAccessor(&Splitcache::m_total_size),
 			MakeUintegerChecker<uint32_t>()
