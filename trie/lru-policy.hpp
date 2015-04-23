@@ -103,10 +103,10 @@ struct lru_policy_traits {
         policy_container::clear();
       }
 
-      inline void
+	  // Function to set the max size of the cache
+	  inline void
       set_max_size(size_t max_size)
       {
-		  // use policy_container::size()
 		  if (policy_container::size() > max_size)
 		  {
 			  shrink(max_size);
@@ -114,6 +114,7 @@ struct lru_policy_traits {
           max_size_ = max_size;
       }
 
+	  // Function to prune using policy if new max size is smaller than cache members
 	  inline void
 	  shrink(size_t max_size)
 	  {

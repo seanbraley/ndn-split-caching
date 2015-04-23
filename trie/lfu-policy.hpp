@@ -133,11 +133,24 @@ struct lfu_policy_traits {
         policy_container::clear();
       }
 
-      inline void
-      set_max_size(size_t max_size)
-      {
-        max_size_ = max_size;
-      }
+	  // Function to set the max size of the cache
+	  inline void
+		  set_max_size(size_t max_size)
+	  {
+		  if (policy_container::size() > max_size)
+		  {
+			  shrink(max_size);
+		  }
+		  max_size_ = max_size;
+	  }
+
+	  // Function to prune using policy if new max size is smaller than cache members
+	  inline void
+		  shrink(size_t max_size)
+	  {
+		  while (policy_container::size() > max_size)
+			  base_.erase(&(*policy_container::begin()));
+	  }
 
       inline size_t
       get_max_size() const
