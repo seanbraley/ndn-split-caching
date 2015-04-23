@@ -117,7 +117,11 @@ main(int argc, char* argv[])
   // Install NDN stack on all nodes
   ndn::StackHelper ndnHelper;
   ndnHelper.SetDefaultRoutes(true);
-  ndnHelper.SetOldContentStore("ns3::ndn::cs::Splitcache"); // splitcache is currently nocache
+  ndnHelper.SetOldContentStore("ns3::ndn::cs::Splitcache",
+	  "NormalPolicy", "ns3::ndn::cs::Lru", 
+	  "SpecialPolicy", "ns3::ndn::cs::Lru", 
+	  "TotalCacheSize", StringValue("500"), 
+	  "Configure", "40"); // Percentage Special
   ndnHelper.Install(nodes);
 
 

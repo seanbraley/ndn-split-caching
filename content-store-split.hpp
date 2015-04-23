@@ -31,17 +31,21 @@ namespace cs {
 
 /**
  * @ingroup ndn-cs
- * @brief Implementation of ContentStore that completely disables caching
+ * @brief Implementation of ContentStore that has two underlying caches
  */
 class Splitcache : public ContentStore {
 public:
-	std::string m_normal_size;
+	std::string m_string_parameter;
+
 	std::string m_normal_policy;
 	
-	std::string m_special_size;
 	std::string m_special_policy;
 
 	int incr;
+
+	std::uint32_t m_total_size;
+	std::uint32_t m_normal_size;
+	std::uint32_t m_special_size;
 
 	Ptr<ContentStore> m_normal;
 	Ptr<ContentStore> m_special;
@@ -71,6 +75,14 @@ public:
 
   virtual void
   Print(std::ostream& os) const;
+
+  // Our functions
+  void SetStringAttr(std::string attr);
+  void SetNormalPolicy(std::string attr);
+  void SetSpecialPolicy(std::string attr);
+  void SetTotalCacheSize(std::string attr);
+  void SetPercentageSpecial(std::string attr);
+  void Configure(std::string attr);
 
   virtual uint32_t
   GetSize() const;

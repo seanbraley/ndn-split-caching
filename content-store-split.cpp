@@ -21,6 +21,7 @@
 
 #include "ns3/log.h"
 #include "ns3/packet.h"
+#include "ns3/string.h"
 
 // Might not nee this
 //#include "ns3/object-factory.h"
@@ -37,10 +38,36 @@ NS_OBJECT_ENSURE_REGISTERED(Splitcache);
 TypeId
 Splitcache::GetTypeId(void)
 {
-  static TypeId tid = TypeId("ns3::ndn::cs::Splitcache")
-                        .SetGroupName("Ndn")
-                        .SetParent<ContentStore>()
-						.AddConstructor<Splitcache>();
+	static TypeId tid = TypeId("ns3::ndn::cs::Splitcache")
+		.SetGroupName("Ndn")
+		.SetParent<ContentStore>()
+		.AddConstructor<Splitcache>()
+
+		.AddAttribute("NormalPolicy",
+			"URI for the Normal policy",
+			StringValue(""),
+			MakeStringAccessor(&Splitcache::SetNormalPolicy),
+			MakeStringChecker()
+		)
+		.AddAttribute("SpecialPolicy",
+			"URI for the Special policy",
+			StringValue(""),
+			MakeStringAccessor(&Splitcache::SetSpecialPolicy),
+			MakeStringChecker()
+		)
+		.AddAttribute("TotalCacheSize",
+			"URI for the Special policy",
+			UintegerValue(100),
+			MakeUintegerAccessor(&Splitcache::m_total_size),
+			MakeUintegerChecker<uint32_t>()
+		)
+		.AddAttribute("Configure",
+			"Configure the split.",
+			StringValue(""),
+			MakeStringAccessor(&Splitcache::Configure),
+			MakeStringChecker()
+		)
+		;
 						/*
 						.AddAttribute("SNormal",
 									  "Sets the cache size for the normal cache",
@@ -87,7 +114,6 @@ Splitcache::GetTypeId(void)
 Splitcache::Splitcache()
 {
 	// Create object factory
-	ObjectFactory m_contentStoreFactory;
 
 	// Set type and create 
 	//std::cout << "Debugline" << std::endl;
@@ -103,15 +129,18 @@ Splitcache::Splitcache()
 	m_contentStoreFactory.Set("MaxSize", StringValue(m_special_size));
 	m_special = m_contentStoreFactory.Create<ContentStore>();
 	*/
+	/*
 	
-	m_contentStoreFactory.SetTypeId("ns3::ndn::cs::Lru");
+	NS_LOG_DEBUG("I got a parameter! " << m_string_parameter << std::endl);
+
+	m_contentStoreFactory.SetTypeId("ns3::ndn::cs::Fifo");
 	m_contentStoreFactory.Set("MaxSize", StringValue("15"));
 	m_normal = m_contentStoreFactory.Create<ContentStore>();
 
-	m_contentStoreFactory.SetTypeId("ns3::ndn::cs::Lru");
+	m_contentStoreFactory.SetTypeId("ns3::ndn::cs::Fifo");
 	m_contentStoreFactory.Set("MaxSize", StringValue("15"));
 	m_special = m_contentStoreFactory.Create<ContentStore>();
-
+	*/
 
 
 	incr = 0;
@@ -203,9 +232,82 @@ Splitcache::Print(std::ostream& os) const
 
 // Our shiny new functions
 
+void
+Splitcache::SetStringAttr(std::string attr)
+{
+	NS_LOG_DEBUG("SetStringAttr was called " << attr << std::endl);
+	m_string_parameter = attr;
+
+}
+
+void
+Splitcache::SetNormalPolicy(std::string attr)
+{
+	NS_LOG_DEBUG("SetNormalPolicy was called " << attr << std::endl);
+	m_normal_policy = attr;
+}
 
 
+void
+Splitcache::SetSpecialPolicy(std::string attr)
+{
+	NS_LOG_DEBUG("SetSpecialPolicy was called " << attr << std::endl);
+	m_special_policy = attr;
+}
 
+void
+Splitcache::SetTotalCacheSize(std::string attr)
+{
+
+}
+
+void
+Splitcache::SetPercentageSpecial(std::string attr)
+{
+
+}
+
+void
+Splitcache::Configure(std::string attr)
+{
+
+	NS_LOG_DEBUG("Start was Called " << attr << std::endl);
+		
+	// Create object factory
+	ObjectFactory m_contentStoreFactory;
+
+	// Calculate cache sizes
+
+	// Get value (say 40)
+	m_special_size = std::stoi(attr);
+
+	// Special is total*value/100 500*40/100 = 200
+	m_special_size = m_total_size*m_special_size / 100;
+	std::stringstream ss;
+	std::string tmp_special_size;
+	ss << m_special_size;
+	ss >> tmp_special_size;
+
+	// Normal is whats left
+	m_normal_size = m_total_size - m_special_size;
+	std::string tmp_normal_size;
+	ss << m_normal_size;
+	ss >> tmp_normal_size;
+
+	// Normal Content Store
+	m_contentStoreFactory.SetTypeId(m_normal_policy);
+	m_contentStoreFactory.Set("MaxSize", StringValue(std::to_string(m_normal_size)));
+	m_normal = m_contentStoreFactory.Create<ContentStore>();
+
+	// Special Content Store
+	m_contentStoreFactory.SetTypeId(m_special_policy);
+	m_contentStoreFactory.Set("MaxSize", StringValue(std::to_string(m_special_size)));
+	m_special = m_contentStoreFactory.Create<ContentStore>();
+
+	NS_LOG_DEBUG("Created normal cache with size: " << m_normal_size << " and special with: " << tmp_special_size << std::endl);
+
+
+}
 
 uint32_t
 Splitcache::GetSize() const
