@@ -54,9 +54,21 @@ main(int argc, char* argv[])
   Config::SetDefault("ns3::PointToPointChannel::Delay", StringValue("10ms"));
   Config::SetDefault("ns3::DropTailQueue::MaxPackets", StringValue("20"));
 
+  std::uint32_t nTime = 40;
+  std::uint32_t nSplit = 40;
+  std::uint32_t nSize = 200;
+  std::string pNormal = "ns3::ndn::cs::Lru";
+  std::string pSpecial = "ns3::ndn::cs::Lru";
+
   // Read optional command-line parameters (e.g., enable visualizer with ./waf --run=<> --visualize
   CommandLine cmd;
+  cmd.AddValue("nTime", "Time to run simulation", nTime);
+  cmd.AddValue("nSplit", "Percent max Special Cache", nSplit);
+  cmd.AddValue("nSize", "Percent max Cache Size", nSize);
+  cmd.AddValue("pNormal", "Normal Cache Policy", pNormal);
+  cmd.AddValue("pSpecial", "Special Cache Policy", pSpecial);
   cmd.Parse(argc, argv);
+
 
   // Creating nodes
   NodeContainer nodes;
@@ -71,10 +83,10 @@ main(int argc, char* argv[])
   ndn::StackHelper ndnHelper;
   ndnHelper.SetDefaultRoutes(true);
   ndnHelper.SetOldContentStore("ns3::ndn::cs::Splitcache",
-	  "NormalPolicy", "ns3::ndn::cs::Lru",
-	  "SpecialPolicy", "ns3::ndn::cs::Lru",
-	  "TotalCacheSize", "200",
-	  "Configure", "40");
+	  "NormalPolicy", pNormal,
+	  "SpecialPolicy", pSpecial,
+	  "TotalCacheSize", std::to_string(nSize),
+	  "Configure", std::to_string(nSplit));
   ndnHelper.Install(nodes.Get(1));
   
   // No cache on consumer/producer
@@ -107,7 +119,7 @@ main(int argc, char* argv[])
   producerHelper.SetAttribute("PayloadSize", StringValue("1024"));
   producerHelper.Install(nodes.Get(2)); // last node
 
-  Simulator::Stop(Seconds(40.0));
+  Simulator::Stop(Seconds(nTime));
 
   // CS Trace (METRIC 1)
   ndn::CsTracer::InstallAll("cs-trace.txt", Seconds(1));

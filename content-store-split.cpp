@@ -277,7 +277,7 @@ Splitcache::Configure(std::string attr)
 	m_special = m_contentStoreFactory.Create<ContentStore>();
 
 	NS_LOG_DEBUG("Created normal cache with size: " << m_normal_size << " and special with: " << "1" << std::endl);
-
+	NS_LOG_DEBUG("Calculated Max Size: " << std::to_string(m_special_max_size) << std::endl);
 
 }
 
