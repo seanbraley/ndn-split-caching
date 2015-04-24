@@ -45,6 +45,7 @@ public:
 	std::uint32_t m_total_size;
 	std::uint32_t m_normal_size;
 	std::uint32_t m_special_size;
+	std::uint32_t m_special_max_size;
 
 	Ptr<ContentStore> m_normal;
 	Ptr<ContentStore> m_special;

@@ -176,49 +176,29 @@ Splitcache::Lookup(shared_ptr<const Interest> interest)
 bool
 Splitcache::Add(shared_ptr<const Data> data)
 {
-	// if special data
-
-	// If special data
 	NS_LOG_DEBUG("Data Add Request");
 	NS_LOG_DEBUG(data->getName());
-
-	NS_LOG_DEBUG("=== MAX CACHE SIZE " << m_special->GetMaxSize());
-	NS_LOG_DEBUG("=== MAX CACHE SIZE " << m_normal->GetMaxSize());
-
-	if (m_special->GetSize() >= 10)
-	{
-		NS_LOG_DEBUG("============ MAKING INTO LOOP");
-		m_special->SetMaxSize(6);
-	}
-
-	NS_LOG_DEBUG("=== MAX CACHE SIZE SPECIAL" << m_special->GetMaxSize());
-	NS_LOG_DEBUG("=== MAX CACHE CURRENT MEMBERS " << m_special->GetSize());
-
-
-	/*
-	m_normal->SetMaxSize(200);
-	NS_LOG_DEBUG("=== MAX CACHE SIZE " << m_normal->GetMaxSize());
-	m_normal->SetMaxSize(150);
-	NS_LOG_DEBUG("=== MAX CACHE SIZE " << m_normal->GetMaxSize());
-	*/
-
+	NS_LOG_DEBUG("State of Cache: Special: " << m_special->GetSize() << " Normal " << m_normal->GetSize());
+	NS_LOG_DEBUG("State of Cache: Special (MAX): " << m_special->GetMaxSize() << " Normal (MAX) " << m_normal->GetMaxSize());
 	if (data->getName().toUri().find("special") < 10)
 	{
+		NS_LOG_DEBUG("Data Type: Special");
 
-		// Can we add? Is the special cache full? do we expand?
-
-		// This gives the number of entries in the store
-		NS_LOG_DEBUG("Special: " << m_special->GetSize() << " Normal " << m_normal->GetSize());
-
-		//NS_LOG_DEBUG(m_special->MaxSize());
-
+		if (m_special->GetSize() == m_special->GetMaxSize() && m_special->GetMaxSize() < m_special_max_size)
+		{
+			// Shrink normal
+			NS_LOG_DEBUG("Increasing Special Cache Size");
+			m_normal->SetMaxSize(m_normal->GetMaxSize() - 1);
+			m_special->SetMaxSize(m_special->GetMaxSize() + 1);
+		}
 		return m_special->Add(data);
+
 	}
 	// If normal data
 	else
 	{
-		NS_LOG_DEBUG("Data for Normal Cache");
-		NS_LOG_DEBUG("Special: " << m_special->GetSize() << " Normal " << m_normal->GetSize());
+		// Follow typical replacement policy
+		NS_LOG_DEBUG("Data Type: Normal");
 		return m_normal->Add(data);
 	}
   return false;
@@ -281,29 +261,22 @@ Splitcache::Configure(std::string attr)
 	m_special_size = std::stoi(attr);
 
 	// Special is total*value/100 500*40/100 = 200
-	m_special_size = m_total_size*m_special_size / 100;
-	std::stringstream ss;
-	std::string tmp_special_size;
-	ss << m_special_size;
-	ss >> tmp_special_size;
+	m_special_max_size = m_total_size*m_special_size / 100;
 
 	// Normal is whats left
-	m_normal_size = m_total_size - m_special_size;
-	std::string tmp_normal_size;
-	ss << m_normal_size;
-	ss >> tmp_normal_size;
+	m_normal_size = m_total_size - 1;
 
 	// Normal Content Store
 	m_contentStoreFactory.SetTypeId(m_normal_policy);
 	m_contentStoreFactory.Set("MaxSize", StringValue(std::to_string(m_normal_size)));
 	m_normal = m_contentStoreFactory.Create<ContentStore>();
 
-	// Special Content Store
+	// Special Content Store STARTS AT 1
 	m_contentStoreFactory.SetTypeId(m_special_policy);
-	m_contentStoreFactory.Set("MaxSize", StringValue(std::to_string(m_special_size)));
+	m_contentStoreFactory.Set("MaxSize", StringValue("1"));
 	m_special = m_contentStoreFactory.Create<ContentStore>();
 
-	NS_LOG_DEBUG("Created normal cache with size: " << m_normal_size << " and special with: " << tmp_special_size << std::endl);
+	NS_LOG_DEBUG("Created normal cache with size: " << m_normal_size << " and special with: " << "1" << std::endl);
 
 
 }

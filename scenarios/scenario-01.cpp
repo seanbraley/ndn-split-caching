@@ -73,7 +73,7 @@ main(int argc, char* argv[])
   ndnHelper.SetOldContentStore("ns3::ndn::cs::Splitcache",
 	  "NormalPolicy", "ns3::ndn::cs::Lru",
 	  "SpecialPolicy", "ns3::ndn::cs::Lru",
-	  "TotalCacheSize", "500",
+	  "TotalCacheSize", "200",
 	  "Configure", "40");
   ndnHelper.Install(nodes.Get(1));
   
@@ -92,21 +92,29 @@ main(int argc, char* argv[])
   //ndn::AppHelper consumerHelper("ns3::ndn::ConsumerCbr");
   // Consumer will request /prefix/0, /prefix/1, ...
   ndn::AppHelper consumerHelper("ns3::ndn::ConsumerZipfMandelbrot");
-  consumerHelper.SetPrefix("/prefix");
-  consumerHelper.SetAttribute("Frequency", StringValue("10")); // 10 interests a second
+
+  consumerHelper.SetPrefix("data/basic");
+  consumerHelper.SetAttribute("Frequency", StringValue("5")); // 1 interests a second
+  consumerHelper.Install(nodes.Get(0));                        // first node
+  consumerHelper.SetPrefix("data/special");
+  consumerHelper.SetAttribute("Frequency", StringValue("15")); //  2 interests a second
   consumerHelper.Install(nodes.Get(0));                        // first node
 
   // Producer
   ndn::AppHelper producerHelper("ns3::ndn::Producer");
   // Producer will reply to all requests starting with /prefix
-  producerHelper.SetPrefix("/prefix");
+  producerHelper.SetPrefix("/data");
   producerHelper.SetAttribute("PayloadSize", StringValue("1024"));
   producerHelper.Install(nodes.Get(2)); // last node
 
-  Simulator::Stop(Seconds(5.0));
+  Simulator::Stop(Seconds(40.0));
 
-  // CS Trace
+  // CS Trace (METRIC 1)
   ndn::CsTracer::InstallAll("cs-trace.txt", Seconds(1));
+
+  // (METRIC 2)
+  ndn::AppDelayTracer::InstallAll("app-delays-trace.txt");
+
 
   Simulator::Run();
   Simulator::Destroy();
