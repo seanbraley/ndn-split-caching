@@ -54,7 +54,7 @@ main(int argc, char* argv[])
   Config::SetDefault("ns3::PointToPointChannel::Delay", StringValue("10ms"));
   Config::SetDefault("ns3::DropTailQueue::MaxPackets", StringValue("20"));
 
-  std::uint32_t nTime = 40;
+  std::uint32_t nTime = 400;
   std::uint32_t nSplit = 40;
   std::uint32_t nSize = 200;
   std::string pNormal = "ns3::ndn::cs::Lru";
