@@ -116,8 +116,8 @@ Packet::EnablePrinting ();
   randomizer->SetAttribute("Max", DoubleValue(100));
 
   mobility.SetPositionAllocator ("ns3::RandomBoxPositionAllocator",
-    "X", StringValue ("ns3::UniformRandomVariable[Min=0|Max=100]"),
-    "Y", StringValue ("ns3::UniformRandomVariable[Min=0|Max=100]"));
+    "X", StringValue ("ns3::UniformRandomVariable[Min=0|Max=10]"),
+    "Y", StringValue ("ns3::UniformRandomVariable[Min=0|Max=10]"));
 
 /*
   mobility.SetPositionAllocator("ns3::RandomBoxPositionAllocator", "X", PointerValue(randomizer),
@@ -163,8 +163,14 @@ WifiHelper wifi = WifiHelper::Default ();
 
   // Install mobility
   mobility.Install (stas);
-  mobility.Install (ap);
+//  mobility.Install (ap);
+  mobility.Install (ap.Get(0));
 
+  mobility.SetPositionAllocator ("ns3::RandomBoxPositionAllocator",
+    "X", StringValue ("ns3::UniformRandomVariable[Min=100|Max=110]"),
+    "Y", StringValue ("ns3::UniformRandomVariable[Min=100|Max=110]"));
+
+  mobility.Install (ap.Get(1));
 
   // Install NDN stack on all nodes
   ndn::StackHelper ndnHelper;
