@@ -75,12 +75,15 @@ main(int argc, char* argv[])
   Config::SetDefault("ns3::PointToPointChannel::Delay", StringValue("10ms"));
   Config::SetDefault("ns3::DropTailQueue::MaxPackets", StringValue("20"));
 
-  std::uint32_t max_routers = 1;
 
+  std::uint32_t max_routers = 1;
+  std::string cSize = "100";
+  std::string cSplit = "75";
 
   // Read optional command-line parameters (e.g., enable visualizer with ./waf --run=<> --visualize
   CommandLine cmd;
-
+  cmd.AddValue("cSize", "Cache Size", cSize);
+  cmd.AddValue("cSplit", "Cache Split", cSplit);
   cmd.AddValue("routers", "number of routers", max_routers);
   cmd.Parse(argc, argv);
 
@@ -231,12 +234,16 @@ main(int argc, char* argv[])
   // Install NDN stack on all nodes
   ndn::StackHelper ndnHelper;
   ndnHelper.SetDefaultRoutes(true);
+  
   ndnHelper.SetOldContentStore("ns3::ndn::cs::Splitcache",
 							   "NormalPolicy", "ns3::ndn::cs::Lru", 
 							   "SpecialPolicy", "ns3::ndn::cs::Lru", 
-							   "TotalCacheSize", "500", 
-							   "Configure", "40"); 
+							   "TotalCacheSize", cSize, 
+							   "Configure", cSplit); 
   //                       Percentage Special^
+  
+  //ndnHelper.SetOldContentStore("ns3::ndn::cs::Lru");
+
   ndnHelper.Install(ap);
   ndnHelper.Install(routers);
   ndnHelper.SetOldContentStore("ns3::ndn::cs::Nocache");
@@ -255,17 +262,17 @@ main(int argc, char* argv[])
 
   // Consumer (basic and special data)
   ndn::AppHelper consumerHelper("ns3::ndn::ConsumerZipfMandelbrot");
-  consumerHelper.SetAttribute("NumberOfContents", StringValue("10")); // 10 different contents
+  consumerHelper.SetAttribute("NumberOfContents", StringValue("100")); // 10 different contents
   // Consumer will request /prefix/0, /prefix/1, ...
 
   // Basic consumers request basic data (and pumpkin spice coffee)
   consumerHelper.SetPrefix("data/basic");
-  consumerHelper.SetAttribute("Frequency", StringValue("1")); // 1 interests a second
+  consumerHelper.SetAttribute("Frequency", StringValue("10")); // 1 interests a second
   consumerHelper.Install(sta_consumers);   
 
   // Mobile consumers request special data only
   consumerHelper.SetPrefix("data/special");
-  consumerHelper.SetAttribute("Frequency", StringValue("2")); //  2 interests a second
+  consumerHelper.SetAttribute("Frequency", StringValue("10")); //  2 interests a second
   consumerHelper.Install(sta_mobile_consumers);
 
 
@@ -284,10 +291,13 @@ main(int argc, char* argv[])
   //athstats.EnableAthstats("athstats-sta", sta_consumers);
   //athstats.EnableAthstats ("athstats-ap", ap);
 
-  ndn::AppDelayTracer::InstallAll("app-delays-trace.txt");
-  ndn::CsTracer::InstallAll("cs-trace.txt", Seconds(1));
+  ndn::AppDelayTracer::Install(sta_consumers, "app-delays-trace-stationary-02.txt");
+  ndn::AppDelayTracer::Install(sta_mobile_consumers, "app-delays-trace-mobile-02.txt");
+  ndn::CsTracer::Install(ap, "cs-trace-ap-02.txt", Seconds(1));
+  ndn::CsTracer::Install(routers, "cs-trace-routers-02.txt", Seconds(1));
 
-  Simulator::Stop(Seconds(20.0));
+  // 10 min
+  Simulator::Stop(Seconds(600.0));
 
   Simulator::Run();
   Simulator::Destroy();
