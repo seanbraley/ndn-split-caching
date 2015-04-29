@@ -1,6 +1,7 @@
 __author__ = 'sean.braley'
 import os
 import csv
+import sys
 
 #########################################################
 ## Change these to match the folder and scenario you want
@@ -8,6 +9,10 @@ import csv
 
 folder = "size-100-75"
 scenario = "04"
+
+if len(sys.argv) == 3:
+    folder = sys.argv[1]
+    scenario = sys.argv[2]
 
 base_policy = ("Lru", "Lfu", "Fifo")
 special_policy = ("Lru", "Lfu", "Fifo")
@@ -38,29 +43,30 @@ for tp in ('ap', 'routers'):
         for x in content:
             nodes.add(x.split("\t")[1])
 
-        with open(os.path.join("results", folder, "cs-trace-{0}-{1}.csv".format(tp, scenario)), "a") as output:
+        # csv Output
+        # with open(os.path.join("results", folder, "cs-trace-{0}-{1}.csv".format(tp, scenario)), "a") as output:
 
-            for node in nodes:
-                hits_per_second = [int(x.split("\t")[3].strip()) for x in content if x.split("\t")[1] == node and x.split("\t")[2] == "CacheHits"]
-                misses_per_second = [int(x.split("\t")[3].strip()) for x in content if x.split("\t")[1] == node and x.split("\t")[2] == "CacheMisses"]
+        for node in nodes:
+            hits_per_second = [int(x.split("\t")[3].strip()) for x in content if x.split("\t")[1] == node and x.split("\t")[2] == "CacheHits"]
+            misses_per_second = [int(x.split("\t")[3].strip()) for x in content if x.split("\t")[1] == node and x.split("\t")[2] == "CacheMisses"]
 
-                cache_hit_ratio = (sum(hits_per_second)/float((sum(hits_per_second)+sum(misses_per_second)))) if \
-                    (sum(hits_per_second)+sum(misses_per_second)) != 0 else 0
+            cache_hit_ratio = (sum(hits_per_second)/float((sum(hits_per_second)+sum(misses_per_second)))) if \
+                (sum(hits_per_second)+sum(misses_per_second)) != 0 else 0
 
-                print "Node: {0} ({1}): Cache hit ratio: {2:.2f}".format(node, tp, cache_hit_ratio)
+            print "Node: {0} ({1}): Cache hit ratio: {2:.2f}".format(node, tp, cache_hit_ratio)
 
-                if tp == "ap":
-                    ap_avg.append(cache_hit_ratio)
-                else:
-                    router_avg.append(cache_hit_ratio)
+            if tp == "ap":
+                ap_avg.append(cache_hit_ratio)
+            else:
+                router_avg.append(cache_hit_ratio)
                 #print hits_per_second
                 #print avg(hits_per_second)
                 #print misses_per_second
                 #print avg(misses_per_second)
 
-                answer_writer = csv.writer(output)
+                # answer_writer = csv.writer(output)
 
-                answer_writer.writerow(["Node: {0}".format(node), tp] + hits_per_second)
+                # answer_writer.writerow(["Node: {0}".format(node), tp] + hits_per_second)
 
 print("Average AP Hit Ratio: {0:.2f}".format(avg(ap_avg)))
 print("Average Router Hit Ratio: {0:.2f}".format(avg(router_avg)))
