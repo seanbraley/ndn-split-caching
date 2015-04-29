@@ -95,7 +95,7 @@ for tp in ('mobile', 'stationary'):
 
                 throughput = len(delays)/600.0
 
-                delivery_ratio = len(delays)/600.0*10
+                delivery_ratio = len(delays)/(600.0*10)
 
                 print "Node: {0} ({1}): Average Delay: {2:.2f}; Throughput: {3:.2f}; Delivery Ratio: {4:.2f}".\
                     format(node, tp, avg_delay, throughput, delivery_ratio)
